@@ -1,0 +1,25 @@
+{
+  "author": "",
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "description": "",
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.1",
+    "prettier": "^3.3.0",
+    "typescript": "^5.4.5"
+  },
+  "keywords": [],
+  "license": "ISC",
+  "main": "index.js",
+  "name": "eisiorbma",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "format": "prettier --write .",
+    "start": "node dist/index.js",
+    "watch": "tsc -w"
+  },
+  "version": "1.0.0"
+}
