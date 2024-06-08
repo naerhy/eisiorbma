@@ -1,4 +1,6 @@
 import Ajv from "ajv";
+import { MealEntity } from "./entities/meal";
+import { PhotoEntity } from "./entities/photo";
 
 import type { JSONSchemaType } from "ajv";
 
@@ -8,6 +10,8 @@ interface Env {
   POSTGRES_PASSWORD: string;
   POSTGRES_DB: string;
 }
+
+export type NewMealBody = Omit<MealEntity, "id" | "thumbnailBase64" | "photo"> & Omit<PhotoEntity, "id">;
 
 const envSchema: JSONSchemaType<Env> = {
   type: "object",
@@ -21,6 +25,18 @@ const envSchema: JSONSchemaType<Env> = {
   additionalProperties: true
 };
 
+const newMealBodySchema: JSONSchemaType<NewMealBody> = {
+  type: "object",
+  properties: {
+    name: { type: "string", minLength: 1 },
+    isRecipe: { type: "boolean" },
+    photoBase64: { type: "string", pattern: "^data:image\/jpeg;base64,.+$" }
+  },
+  required: ["name", "isRecipe", "photoBase64"],
+  additionalProperties: false
+};
+
 const ajv = new Ajv({ coerceTypes: true });
 
 export const validateEnvSchema = ajv.compile(envSchema);
+export const validateNewMealBodySchema = ajv.compile(newMealBodySchema);
