@@ -1,12 +1,11 @@
 import express from "express";
 import { DataSource } from "typeorm";
 import { MealEntity } from "../entities/meal";
-import { PhotoEntity } from "../entities/photo";
 import { validateID } from "../middlewares";
-import { validateNewMealBodySchema } from "../validation";
+import { validateAddMealBodySchema } from "../validation";
 
 import type { Request, Router } from "express";
-import type { NewMealBody } from "../validation";
+import type { AddMealBody } from "../validation";
 import type { ReqWithParamID } from "../types";
 
 async function createMealsRouter(): Promise<Router> {
@@ -17,18 +16,15 @@ async function createMealsRouter(): Promise<Router> {
     username: "user",
     password: "password",
     database: "eisiorbma",
-    entities: [MealEntity, PhotoEntity],
+    entities: [MealEntity],
     synchronize: true // TODO: learn migrations and remove this line
   });
   await dataSource.initialize();
-  const mealRepository = dataSource.getRepository(MealEntity);
-  const photoRepository = dataSource.getRepository(PhotoEntity);
+  const repository = dataSource.getRepository(MealEntity);
   const router = express.Router();
   router.get("/", async (_, res, next) => {
-    console.log(_.params);
     try {
-      const meals = await mealRepository.find();
-      res.json(meals);
+      res.json(await repository.find());
     } catch (err: unknown) {
       console.error(err);
       next(err);
@@ -36,54 +32,61 @@ async function createMealsRouter(): Promise<Router> {
   });
   router.get("/:id", validateID, async (req: ReqWithParamID, res, next) => {
     try {
-      const meal = await mealRepository.findOne({
-        where: {
-          id: Number(req.params.id)
-        },
-        relations: {
-          photo: true
-        }
-      });
-      if (!meal) {
-        throw new Error("Meal does not exist");
-      }
-      res.json(meal);
+      res.json(await findMeal(Number(req.params.id)));
     } catch (err: unknown) {
       next(err);
     }
   });
-  router.post("/", async (req: Request<{}, {}, NewMealBody>, res, next) => {
+  router.post("/", async (req: Request<{}, {}, AddMealBody>, res, next) => {
     try {
-      const body = validateNewMealBodySchema(req.body) ? req.body : null;
+      const body = validateAddMealBodySchema(req.body) ? req.body : null;
       if (!body) {
         throw new Error("Body is invalid");
       }
-      const newPhoto = new PhotoEntity();
-      newPhoto.photoBase64 = body.photoBase64;
-      await photoRepository.save(newPhoto);
-      const newMeal = new MealEntity();
-      newMeal.name = body.name;
-      newMeal.isRecipe = body.isRecipe;
-      newMeal.thumbnailBase64 = body.photoBase64; // TODO: create thumbnail of photo
-      newMeal.photo = newPhoto;
-      await mealRepository.save(newMeal);
-      res.json(newMeal);
+      const meal = new MealEntity();
+      meal.name = body.name;
+      meal.isRecipe = body.isRecipe;
+      meal.photoURL = "";
+      meal.thumbnailURL = "";
+      res.json(await repository.save(meal));
     } catch (err: unknown) {
       next(err);
     }
   });
+  /*
+  router.patch("/:id", validateID, async (req: ReqWithParamID, res, next) => {
+    try {
+      const meal = await findMeal(Number(req.params.id));
+      // mealRepository.merge(meal, req.body);
+      const newPhoto = new PhotoEntity();
+      newPhoto.id = meal.photo.id;
+      newPhoto.photoBase64 = req.body.photoBase64;
+      await photoRepository.save(newPhoto);
+      res.json(await mealRepository.save(meal));
+      console.log(await photoRepository.find()); // TODO: remove
+    } catch (err: unknown) {
+      next(err);
+    }
+  });
+  */
   router.delete("/:id", validateID, async (req: ReqWithParamID, res, next) => {
     try {
-      const meal = await mealRepository.findOneBy({ id: Number(req.params.id) });
-      if (!meal) {
-        throw new Error("Meal does not exist");
-      }
-      await mealRepository.remove(meal);
+      const meal = await findMeal(Number(req.params.id));
+      await repository.remove(meal);
       res.json(meal);
     } catch (err: unknown) {
       next(err);
     }
   });
+
+  async function findMeal(id: number): Promise<MealEntity> {
+    const meal = await repository.findOneBy({ id });
+    if (!meal) {
+      throw new Error("Meal does not exist");
+    }
+    return meal;
+  }
+
   return router;
 }
 

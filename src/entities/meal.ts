@@ -1,5 +1,4 @@
-import { Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn } from "typeorm";
-import { PhotoEntity } from "./photo";
+import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity()
 export class MealEntity {
@@ -13,9 +12,8 @@ export class MealEntity {
   isRecipe: boolean;
 
   @Column()
-  thumbnailBase64: string;
+  photoURL: string;
 
-  @OneToOne(() => PhotoEntity)
-  @JoinColumn()
-  photo: PhotoEntity;
+  @Column()
+  thumbnailURL: string;
 }
