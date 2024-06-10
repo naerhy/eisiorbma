@@ -10,7 +10,9 @@ interface Env {
   POSTGRES_DB: string;
 }
 
-type AddMealBody = Omit<MealEntity, "id" | "filename" | "photoURL" | "thumbnailURL"> & { photoBase64: string };
+type AddMealBody = Omit<MealEntity, "id" | "filename" | "photoURL" | "thumbnailURL"> & {
+  photoBase64: string;
+};
 
 const envSchema: JSONSchemaType<Env> = {
   type: "object",

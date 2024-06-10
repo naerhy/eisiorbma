@@ -12,7 +12,7 @@ import type { ReqWithParamID } from "../types";
 
 async function createMealsRouter(dir: string): Promise<Router> {
   const urls = {
-    vps: "https://naerhy.ovh/static/ambroisie",// TODO: store in .env [?]
+    vps: "https://naerhy.ovh/static/ambroisie", // TODO: store in .env [?]
     photos: join(dir, "photos"),
     thumbnails: join(dir, "thumbnails")
   };
@@ -57,11 +57,16 @@ async function createMealsRouter(dir: string): Promise<Router> {
       if (!body) {
         throw new Error("Body is invalid");
       }
-      const sharpInstance = sharp(Buffer.from(body.photoBase64.replace("data:image/jpeg;base64,", ""), "base64"))
+      const sharpInstance = sharp(
+        Buffer.from(body.photoBase64.replace("data:image/jpeg;base64,", ""), "base64")
+      );
       await Promise.all([
         sharpInstance.clone().jpeg().toFile(localPaths.photo),
         // TODO: resize only if photo is greater than limits
-        sharpInstance.clone().resize(500, 500, { fit: sharp.fit.outside }).toFile(localPaths.thumbnail)
+        sharpInstance
+          .clone()
+          .resize(500, 500, { fit: sharp.fit.outside })
+          .toFile(localPaths.thumbnail)
       ]);
       const meal = new MealEntity();
       meal.name = body.name;
