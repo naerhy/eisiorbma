@@ -14,6 +14,8 @@ type AddMealBody = Omit<MealEntity, "id" | "filename" | "photoURL" | "thumbnailU
   photoBase64: string;
 };
 
+type UpdateMealBody = Partial<AddMealBody>;
+
 const envSchema: JSONSchemaType<Env> = {
   type: "object",
   properties: {
@@ -37,7 +39,19 @@ const addMealBodySchema: JSONSchemaType<AddMealBody> = {
   additionalProperties: false
 };
 
+const updateMealBodySchema: JSONSchemaType<UpdateMealBody> = {
+  type: "object",
+  properties: {
+    name: { type: "string", nullable: true, minLength: 1 },
+    isRecipe: { type: "boolean", nullable: true  },
+    photoBase64: { type: "string", nullable: true, pattern: "^data:image\/jpeg;base64,.+$" }
+  },
+  required: [],
+  additionalProperties: false
+};
+
 const ajv = new Ajv({ coerceTypes: true });
 
 export const validateEnvSchema = ajv.compile(envSchema);
 export const validateAddMealBodySchema = ajv.compile(addMealBodySchema);
+export const validateUpdateMealBodySchema = ajv.compile(updateMealBodySchema);
