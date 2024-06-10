@@ -10,7 +10,7 @@ interface Env {
   POSTGRES_DB: string;
 }
 
-export type AddMealBody = Omit<MealEntity, "id" | "photoURL" | "thumbnailURL">;
+type AddMealBody = Omit<MealEntity, "id" | "filename" | "photoURL" | "thumbnailURL"> & { photoBase64: string };
 
 const envSchema: JSONSchemaType<Env> = {
   type: "object",
@@ -28,9 +28,10 @@ const addMealBodySchema: JSONSchemaType<AddMealBody> = {
   type: "object",
   properties: {
     name: { type: "string", minLength: 1 },
-    isRecipe: { type: "boolean" }
+    isRecipe: { type: "boolean" },
+    photoBase64: { type: "string", pattern: "^data:image\/jpeg;base64,.+$" }
   },
-  required: ["name", "isRecipe"],
+  required: ["name", "isRecipe", "photoBase64"],
   additionalProperties: false
 };
 

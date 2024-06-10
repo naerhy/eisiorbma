@@ -3,12 +3,19 @@ import { DataSource } from "typeorm";
 import { MealEntity } from "../entities/meal";
 import { validateID } from "../middlewares";
 import { validateAddMealBodySchema } from "../validation";
+import sharp from "sharp";
+import { unlinkSync } from "node:fs";
+import { join } from "node:path";
 
-import type { Request, Router } from "express";
-import type { AddMealBody } from "../validation";
+import type { Router } from "express";
 import type { ReqWithParamID } from "../types";
 
-async function createMealsRouter(): Promise<Router> {
+async function createMealsRouter(dir: string): Promise<Router> {
+  const urls = {
+    vps: "https://naerhy.ovh/static/ambroisie",// TODO: store in .env [?]
+    photos: join(dir, "photos"),
+    thumbnails: join(dir, "thumbnails")
+  };
   const dataSource = new DataSource({
     type: "postgres",
     host: "localhost",
@@ -37,19 +44,38 @@ async function createMealsRouter(): Promise<Router> {
       next(err);
     }
   });
-  router.post("/", async (req: Request<{}, {}, AddMealBody>, res, next) => {
+  router.post("/", async (req, res, next) => {
+    // https://stackoverflow.com/questions/1349404/generate-random-string-characters-in-javascript
+    const filename = (Math.random() + 1).toString(36).substring(7) + ".jpeg";
+    // TODO: check if file exists, generate again filename if so
+    const localPaths = {
+      photo: join(urls.photos, filename),
+      thumbnail: join(urls.thumbnails, filename)
+    };
     try {
       const body = validateAddMealBodySchema(req.body) ? req.body : null;
       if (!body) {
         throw new Error("Body is invalid");
       }
+      const sharpInstance = sharp(Buffer.from(body.photoBase64.replace("data:image/jpeg;base64,", ""), "base64"))
+      await Promise.all([
+        sharpInstance.clone().jpeg().toFile(localPaths.photo),
+        // TODO: resize only if photo is greater than limits
+        sharpInstance.clone().resize(500, 500, { fit: sharp.fit.outside }).toFile(localPaths.thumbnail)
+      ]);
       const meal = new MealEntity();
       meal.name = body.name;
+      meal.filename = filename;
       meal.isRecipe = body.isRecipe;
-      meal.photoURL = "";
-      meal.thumbnailURL = "";
+      meal.photoURL = join(urls.vps, "photos", filename);
+      meal.thumbnailURL = join(urls.vps, "thumbnails", filename);
       res.json(await repository.save(meal));
     } catch (err: unknown) {
+      try {
+        deleteLocalFiles([localPaths.photo, localPaths.thumbnail]);
+      } catch (err: unknown) {
+        console.error(err);
+      }
       next(err);
     }
   });
@@ -73,6 +99,7 @@ async function createMealsRouter(): Promise<Router> {
     try {
       const meal = await findMeal(Number(req.params.id));
       await repository.remove(meal);
+      deleteLocalFiles([join(urls.photos, meal.filename), join(urls.thumbnails, meal.filename)]);
       res.json(meal);
     } catch (err: unknown) {
       next(err);
@@ -85,6 +112,12 @@ async function createMealsRouter(): Promise<Router> {
       throw new Error("Meal does not exist");
     }
     return meal;
+  }
+
+  function deleteLocalFiles(filepaths: string[]): void {
+    for (const fp of filepaths) {
+      unlinkSync(fp);
+    }
   }
 
   return router;

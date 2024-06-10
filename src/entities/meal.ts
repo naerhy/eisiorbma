@@ -9,6 +9,9 @@ export class MealEntity {
   name: string;
 
   @Column()
+  filename: string;
+
+  @Column()
   isRecipe: boolean;
 
   @Column()
