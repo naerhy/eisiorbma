@@ -1,7 +1,7 @@
 import express from "express";
 import { DataSource } from "typeorm";
 import { MealEntity } from "../entities/meal";
-import { validateID } from "../middlewares";
+import { authMiddleware, validateID } from "../middlewares";
 import { validateAddMealBodySchema, validateUpdateMealBodySchema } from "../validation";
 import sharp from "sharp";
 import { unlinkSync } from "node:fs";
@@ -9,6 +9,7 @@ import { join } from "node:path";
 
 import type { Router } from "express";
 import type { ReqWithParamID } from "../types";
+import type { Env } from "../validation";
 
 interface FileInfo {
   filename: string;
@@ -18,19 +19,19 @@ interface FileInfo {
   };
 }
 
-async function createMealsRouter(dir: string): Promise<Router> {
+async function createMealsRouter(env: Env): Promise<Router> {
   const urls = {
     vps: "https://naerhy.ovh/static/ambroisie", // TODO: store in .env [?]
-    photos: join(dir, "photos"),
-    thumbnails: join(dir, "thumbnails")
+    photos: join(env.DIR, "photos"),
+    thumbnails: join(env.DIR, "thumbnails")
   };
   const dataSource = new DataSource({
     type: "postgres",
     host: "localhost",
     port: 5432,
-    username: "user",
-    password: "password",
-    database: "eisiorbma",
+    username: env.POSTGRES_USER,
+    password: env.POSTGRES_PASSWORD,
+    database: env.POSTGRES_DB,
     entities: [MealEntity],
     synchronize: true // TODO: learn migrations and remove this line
   });
@@ -54,6 +55,8 @@ async function createMealsRouter(dir: string): Promise<Router> {
       next(err);
     }
   });
+
+  router.use(authMiddleware(env.JWT_SECRET));
 
   router.post("/", async (req, res, next) => {
     let fileInfo: FileInfo | null = null;

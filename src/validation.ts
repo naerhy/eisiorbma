@@ -3,11 +3,18 @@ import { MealEntity } from "./entities/meal";
 
 import type { JSONSchemaType } from "ajv";
 
-interface Env {
+export interface Env {
   PORT: number;
   POSTGRES_USER: string;
   POSTGRES_PASSWORD: string;
   POSTGRES_DB: string;
+  JWT_SECRET: string;
+  ADMIN_PW: string;
+  DIR: string;
+}
+
+interface AuthBody {
+  password: string;
 }
 
 type AddMealBody = Omit<MealEntity, "id" | "filename" | "photoURL" | "thumbnailURL"> & {
@@ -22,10 +29,30 @@ const envSchema: JSONSchemaType<Env> = {
     PORT: { type: "integer" },
     POSTGRES_USER: { type: "string", minLength: 4 },
     POSTGRES_PASSWORD: { type: "string", minLength: 4 },
-    POSTGRES_DB: { type: "string", minLength: 4 }
+    POSTGRES_DB: { type: "string", minLength: 4 },
+    JWT_SECRET: { type: "string", minLength: 6 },
+    ADMIN_PW: { type: "string", minLength: 8 },
+    DIR: { type: "string", minLength: 1 }
   },
-  required: ["PORT", "POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_DB"],
+  required: [
+    "PORT",
+    "POSTGRES_USER",
+    "POSTGRES_PASSWORD",
+    "POSTGRES_DB",
+    "JWT_SECRET",
+    "ADMIN_PW",
+    "DIR"
+  ],
   additionalProperties: true
+};
+
+const authBodySchema: JSONSchemaType<AuthBody> = {
+  type: "object",
+  properties: {
+    password: { type: "string" }
+  },
+  required: ["password"],
+  additionalProperties: false
 };
 
 const addMealBodySchema: JSONSchemaType<AddMealBody> = {
@@ -53,5 +80,6 @@ const updateMealBodySchema: JSONSchemaType<UpdateMealBody> = {
 const ajv = new Ajv({ coerceTypes: true });
 
 export const validateEnvSchema = ajv.compile(envSchema);
+export const validateAuthBodySchema = ajv.compile(authBodySchema);
 export const validateAddMealBodySchema = ajv.compile(addMealBodySchema);
 export const validateUpdateMealBodySchema = ajv.compile(updateMealBodySchema);

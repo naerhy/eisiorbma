@@ -5,6 +5,7 @@ import createMealsRouter from "./routers/meals";
 import { validateEnvSchema } from "./validation";
 import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
+import createAuthRouter from "./routers/auth";
 
 function createStaticDir(dir: string): void {
   if (!existsSync(dir)) {
@@ -19,16 +20,16 @@ function createStaticDir(dir: string): void {
 }
 
 async function start(): Promise<void> {
-  const staticDir = "static";
-  createStaticDir(staticDir);
   const env = validateEnvSchema(process.env) ? process.env : null;
   if (env) {
+    createStaticDir(env.DIR);
     const app = express();
     app.use(express.json({ limit: "1mb" }));
     app.use(cors()); // TODO: check if needed (in production too) [?]
-    app.use("/meals", await createMealsRouter(staticDir));
-    app.listen(process.env.PORT, () => {
-      console.log(`Express application is running on http://localhost:${process.env.PORT}`);
+    app.use("/auth", createAuthRouter(env.JWT_SECRET, env.ADMIN_PW));
+    app.use("/meals", await createMealsRouter(env));
+    app.listen(env.PORT, () => {
+      console.log(`Express application is running on http://localhost:${env.PORT}`);
     });
   } else {
     console.error("Environment variables are not defined, or invalid, exiting...");
