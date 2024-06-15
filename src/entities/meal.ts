@@ -1,22 +1,24 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn } from "typeorm";
+import { RecipeEntity } from "./recipe";
 
 @Entity()
 export class MealEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ type: "varchar", length: 64 })
   name: string;
 
-  @Column()
+  @OneToOne(() => RecipeEntity, { nullable: true })
+  @JoinColumn()
+  recipe: RecipeEntity | null;
+
+  @Column({ type: "varchar", length: 256 })
   filename: string;
 
-  @Column()
-  isRecipe: boolean;
-
-  @Column()
+  @Column({ type: "varchar", length: 256 })
   photoURL: string;
 
-  @Column()
+  @Column({ type: "varchar", length: 256 })
   thumbnailURL: string;
 }

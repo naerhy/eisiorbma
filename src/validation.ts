@@ -2,6 +2,7 @@ import Ajv from "ajv";
 import { MealEntity } from "./entities/meal";
 
 import type { JSONSchemaType } from "ajv";
+import { RecipeEntity } from "./entities/recipe";
 
 export interface Env {
   PORT: number;
@@ -17,11 +18,20 @@ interface AuthBody {
   password: string;
 }
 
-type AddMealBody = Omit<MealEntity, "id" | "filename" | "photoURL" | "thumbnailURL"> & {
-  photoBase64: string;
-};
+interface AddMealBody {
+  meal: Pick<MealEntity, "name"> & {
+    photoBase64: string;
+  };
+  recipe?: Omit<RecipeEntity, "id">;
+}
 
-type UpdateMealBody = Partial<AddMealBody>;
+/*
+type UpdateMealBody = Omit<AddMealBody, "meal"> & {
+  meal: Omit<AddMealBody["meal"], "photoBase64">;
+};
+*/
+
+// type UpdateMealBody = Omit<AddMealBody, "meal.photoBase64">;
 
 const envSchema: JSONSchemaType<Env> = {
   type: "object",
@@ -58,14 +68,44 @@ const authBodySchema: JSONSchemaType<AuthBody> = {
 const addMealBodySchema: JSONSchemaType<AddMealBody> = {
   type: "object",
   properties: {
-    name: { type: "string", minLength: 1 },
-    isRecipe: { type: "boolean" },
-    photoBase64: { type: "string", pattern: "^data:image\/jpeg;base64,.+$" }
+    meal: {
+      type: "object",
+      properties: {
+        name: { type: "string", minLength: 1 },
+        photoBase64: { type: "string", pattern: "^data:image\/jpeg;base64,.+$" }
+      },
+      required: ["name", "photoBase64"],
+      additionalProperties: false
+    },
+    recipe: {
+      type: "object",
+      nullable: true,
+      properties: {
+        types: { type: "array", items: { type: "integer" }, uniqueItems: true },
+        difficulty: { type: "integer" },
+        cookingTime: { type: "integer" },
+        isVegetarian: { type: "boolean" },
+        servings: { type: "integer" },
+        ingredients: { type: "string" },
+        directions: { type: "string" }
+      },
+      required: [
+        "types",
+        "difficulty",
+        "cookingTime",
+        "isVegetarian",
+        "servings",
+        "ingredients",
+        "directions"
+      ],
+      additionalProperties: false
+    }
   },
-  required: ["name", "isRecipe", "photoBase64"],
+  required: ["meal"],
   additionalProperties: false
 };
 
+/*
 const updateMealBodySchema: JSONSchemaType<UpdateMealBody> = {
   type: "object",
   properties: {
@@ -76,10 +116,11 @@ const updateMealBodySchema: JSONSchemaType<UpdateMealBody> = {
   required: [],
   additionalProperties: false
 };
+*/
 
 const ajv = new Ajv({ coerceTypes: true });
 
 export const validateEnvSchema = ajv.compile(envSchema);
 export const validateAuthBodySchema = ajv.compile(authBodySchema);
 export const validateAddMealBodySchema = ajv.compile(addMealBodySchema);
-export const validateUpdateMealBodySchema = ajv.compile(updateMealBodySchema);
+// export const validateUpdateMealBodySchema = ajv.compile(updateMealBodySchema);

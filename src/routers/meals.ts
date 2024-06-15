@@ -1,8 +1,9 @@
 import express from "express";
 import { DataSource } from "typeorm";
 import { MealEntity } from "../entities/meal";
+import { RecipeEntity } from "../entities/recipe";
 import { authMiddleware, validateID } from "../middlewares";
-import { validateAddMealBodySchema, validateUpdateMealBodySchema } from "../validation";
+import { validateAddMealBodySchema, /* validateUpdateMealBodySchema */ } from "../validation";
 import sharp from "sharp";
 import { unlinkSync } from "node:fs";
 import { join } from "node:path";
@@ -32,16 +33,19 @@ async function createMealsRouter(env: Env): Promise<Router> {
     username: env.POSTGRES_USER,
     password: env.POSTGRES_PASSWORD,
     database: env.POSTGRES_DB,
-    entities: [MealEntity],
+    entities: [MealEntity, RecipeEntity],
     synchronize: true // TODO: learn migrations and remove this line
   });
   await dataSource.initialize();
-  const repository = dataSource.getRepository(MealEntity);
+  const repositories = {
+    meal: dataSource.getRepository(MealEntity),
+    recipe: dataSource.getRepository(RecipeEntity)
+  };
   const router = express.Router();
 
   router.get("/", async (_, res, next) => {
     try {
-      res.json(await repository.find());
+      res.json(await repositories.meal.find({ relations: { recipe: true } }));
     } catch (err: unknown) {
       console.error(err);
       next(err);
@@ -65,14 +69,26 @@ async function createMealsRouter(env: Env): Promise<Router> {
       if (!body) {
         throw new Error("Body is invalid");
       }
-      fileInfo = await createLocalFiles(body.photoBase64);
+      fileInfo = await createLocalFiles(body.meal.photoBase64);
+      let recipe: RecipeEntity | null = null;
+      if (body.recipe) {
+        recipe = new RecipeEntity();
+        recipe.types = body.recipe.types;
+        recipe.difficulty = body.recipe.difficulty;
+        recipe.cookingTime = body.recipe.cookingTime;
+        recipe.isVegetarian = body.recipe.isVegetarian;
+        recipe.servings = body.recipe.servings;
+        recipe.ingredients = body.recipe.ingredients;
+        recipe.directions = body.recipe.directions;
+        await repositories.recipe.save(recipe);
+      }
       const meal = new MealEntity();
-      meal.name = body.name;
+      meal.name = body.meal.name;
+      meal.recipe = recipe;
       meal.filename = fileInfo.filename;
-      meal.isRecipe = body.isRecipe;
       meal.photoURL = join(urls.vps, "photos", fileInfo.filename);
       meal.thumbnailURL = join(urls.vps, "thumbnails", fileInfo.filename);
-      res.json(await repository.save(meal));
+      res.json(await repositories.meal.save(meal));
     } catch (err: unknown) {
       try {
         if (fileInfo) {
@@ -85,7 +101,8 @@ async function createMealsRouter(env: Env): Promise<Router> {
     }
   });
 
-  router.patch("/:id", validateID, async (req: ReqWithParamID, res, next) => {
+  /*
+  router.put("/:id", validateID, async (req: ReqWithParamID, res, next) => {
     let fileInfo: FileInfo | null = null;
     try {
       const meal = await findMeal(Number(req.params.id));
@@ -99,18 +116,22 @@ async function createMealsRouter(env: Env): Promise<Router> {
         meal.photoURL = join(urls.vps, "photos", fileInfo.filename);
         meal.thumbnailURL = join(urls.vps, "thumbnails", fileInfo.filename);
       }
-      repository.merge(meal, body);
-      res.json(await repository.save(meal));
+      repositories.meal.merge(meal, body);
+      res.json(await repositories.meal.save(meal));
       // TODO: delete old files
     } catch (err: unknown) {
       next(err);
     }
   });
+  */
 
   router.delete("/:id", validateID, async (req: ReqWithParamID, res, next) => {
     try {
       const meal = await findMeal(Number(req.params.id));
-      await repository.remove(meal);
+      await repositories.meal.remove(meal);
+      if (meal.recipe) {
+        await repositories.recipe.remove(meal.recipe);
+      }
       deleteLocalFiles([join(urls.photos, meal.filename), join(urls.thumbnails, meal.filename)]);
       res.json(meal);
     } catch (err: unknown) {
@@ -119,7 +140,14 @@ async function createMealsRouter(env: Env): Promise<Router> {
   });
 
   async function findMeal(id: number): Promise<MealEntity> {
-    const meal = await repository.findOneBy({ id });
+    const meal = await repositories.meal.findOne({
+      where: {
+        id
+      },
+      relations: {
+        recipe: true
+      }
+    });
     if (!meal) {
       throw new Error("Meal does not exist");
     }
