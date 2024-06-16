@@ -4,7 +4,7 @@ import { MealEntity } from "../entities/meal";
 import { RecipeEntity } from "../entities/recipe";
 import { authMiddleware, validateID } from "../middlewares";
 import sharp from "sharp";
-import { unlinkSync } from "node:fs";
+import { unlink } from "fs";
 import { join } from "node:path";
 import { addMealBodySchema, updateMealBodySchema, updatePhotoSchema } from "../validation";
 
@@ -46,8 +46,7 @@ async function createMealsRouter(env: Env): Promise<Router> {
   router.get("/", async (_, res, next) => {
     try {
       res.json(await repositories.meal.find({ relations: { recipe: true } }));
-    } catch (err: unknown) {
-      console.error(err);
+    } catch (err) {
       next(err);
     }
   });
@@ -55,7 +54,7 @@ async function createMealsRouter(env: Env): Promise<Router> {
   router.get("/:id", validateID, async (req: ReqWithParamID, res, next) => {
     try {
       res.json(await findMeal(Number(req.params.id)));
-    } catch (err: unknown) {
+    } catch (err) {
       next(err);
     }
   });
@@ -80,13 +79,9 @@ async function createMealsRouter(env: Env): Promise<Router> {
       meal.photoURL = join(urls.vps, "photos", fileInfo.filename);
       meal.thumbnailURL = join(urls.vps, "thumbnails", fileInfo.filename);
       res.json(await repositories.meal.save(meal));
-    } catch (err: unknown) {
-      try {
-        if (fileInfo) {
-          deleteLocalFiles([fileInfo.paths.photo, fileInfo.paths.thumbnail]);
-        }
-      } catch (err: unknown) {
-        console.error(err);
+    } catch (err) {
+      if (fileInfo) {
+        deleteLocalFiles([fileInfo.paths.photo, fileInfo.paths.thumbnail]);
       }
       next(err);
     }
@@ -126,11 +121,7 @@ async function createMealsRouter(env: Env): Promise<Router> {
       meal.photoURL = join(urls.vps, "photos", fileInfo.filename);
       meal.thumbnailURL = join(urls.vps, "thumbnails", fileInfo.filename);
       res.json(await repositories.meal.save(meal));
-      try {
-        deleteLocalFiles(oldFilepaths);
-      } catch {
-        console.error(`Could not delete ${oldFilepaths.join(" ")}, delete manually`);
-      }
+      deleteLocalFiles(oldFilepaths);
     } catch (err) {
       next(err);
     }
@@ -139,13 +130,14 @@ async function createMealsRouter(env: Env): Promise<Router> {
   router.delete("/:id", validateID, async (req: ReqWithParamID, res, next) => {
     try {
       const meal = await findMeal(Number(req.params.id));
+      const oldFilepaths = [join(urls.photos, meal.filename), join(urls.thumbnails, meal.filename)];
       await repositories.meal.remove(meal);
       if (meal.recipe) {
         await repositories.recipe.remove(meal.recipe);
       }
-      deleteLocalFiles([join(urls.photos, meal.filename), join(urls.thumbnails, meal.filename)]);
       res.json(meal);
-    } catch (err: unknown) {
+      deleteLocalFiles(oldFilepaths);
+    } catch (err) {
       next(err);
     }
   });
@@ -189,7 +181,11 @@ async function createMealsRouter(env: Env): Promise<Router> {
 
   function deleteLocalFiles(filepaths: string[]): void {
     for (const fp of filepaths) {
-      unlinkSync(fp);
+      unlink(fp, (err) => {
+        if (err) {
+          console.error(err);
+        }
+      });
     }
   }
 
