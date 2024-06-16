@@ -3,10 +3,10 @@ import { DataSource } from "typeorm";
 import { MealEntity } from "../entities/meal";
 import { RecipeEntity } from "../entities/recipe";
 import { authMiddleware, validateID } from "../middlewares";
-import { validateAddMealBodySchema, /* validateUpdateMealBodySchema */ } from "../validation";
 import sharp from "sharp";
 import { unlinkSync } from "node:fs";
 import { join } from "node:path";
+import { addMealBodySchema, updateMealBodySchema, updatePhotoSchema } from "../validation";
 
 import type { Router } from "express";
 import type { ReqWithParamID } from "../types";
@@ -65,21 +65,12 @@ async function createMealsRouter(env: Env): Promise<Router> {
   router.post("/", async (req, res, next) => {
     let fileInfo: FileInfo | null = null;
     try {
-      const body = validateAddMealBodySchema(req.body) ? req.body : null;
-      if (!body) {
-        throw new Error("Body is invalid");
-      }
+      const body = addMealBodySchema.parse(req.body);
       fileInfo = await createLocalFiles(body.meal.photoBase64);
       let recipe: RecipeEntity | null = null;
       if (body.recipe) {
         recipe = new RecipeEntity();
-        recipe.types = body.recipe.types;
-        recipe.difficulty = body.recipe.difficulty;
-        recipe.cookingTime = body.recipe.cookingTime;
-        recipe.isVegetarian = body.recipe.isVegetarian;
-        recipe.servings = body.recipe.servings;
-        recipe.ingredients = body.recipe.ingredients;
-        recipe.directions = body.recipe.directions;
+        repositories.recipe.merge(recipe, body.recipe);
         await repositories.recipe.save(recipe);
       }
       const meal = new MealEntity();
@@ -101,29 +92,49 @@ async function createMealsRouter(env: Env): Promise<Router> {
     }
   });
 
-  /*
-  router.put("/:id", validateID, async (req: ReqWithParamID, res, next) => {
-    let fileInfo: FileInfo | null = null;
+  router.patch("/:id", async (req: ReqWithParamID, res, next) => {
     try {
       const meal = await findMeal(Number(req.params.id));
-      const body = validateUpdateMealBodySchema(req.body) ? req.body : null;
-      if (!body) {
-        throw new Error("Body is invalid");
+      const body = updateMealBodySchema.parse(req.body);
+      meal.name = body.meal.name;
+      if (body.recipe) {
+        if (meal.recipe) {
+          repositories.recipe.merge(meal.recipe, body.recipe);
+          await repositories.recipe.save(meal.recipe);
+        } else {
+          const recipe = new RecipeEntity();
+          repositories.recipe.merge(recipe, body.recipe);
+          await repositories.recipe.save(recipe);
+        }
+      } else {
+        // TODO: delete previous recipe from db
+        meal.recipe = body.recipe;
       }
-      if (body.photoBase64) {
-        fileInfo = await createLocalFiles(body.photoBase64);
-        meal.filename = fileInfo.filename;
-        meal.photoURL = join(urls.vps, "photos", fileInfo.filename);
-        meal.thumbnailURL = join(urls.vps, "thumbnails", fileInfo.filename);
-      }
-      repositories.meal.merge(meal, body);
       res.json(await repositories.meal.save(meal));
-      // TODO: delete old files
-    } catch (err: unknown) {
+    } catch (err) {
       next(err);
     }
   });
-  */
+
+  router.patch("/photo/:id", async (req: ReqWithParamID, res, next) => {
+    try {
+      const meal = await findMeal(Number(req.params.id));
+      const { photoBase64 } = updatePhotoSchema.parse(req.body);
+      const fileInfo = await createLocalFiles(photoBase64);
+      const oldFilepaths = [join(urls.photos, meal.filename), join(urls.thumbnails, meal.filename)];
+      meal.filename = fileInfo.filename;
+      meal.photoURL = join(urls.vps, "photos", fileInfo.filename);
+      meal.thumbnailURL = join(urls.vps, "thumbnails", fileInfo.filename);
+      res.json(await repositories.meal.save(meal));
+      try {
+        deleteLocalFiles(oldFilepaths);
+      } catch {
+        console.error(`Could not delete ${oldFilepaths.join(" ")}, delete manually`);
+      }
+    } catch (err) {
+      next(err);
+    }
+  });
 
   router.delete("/:id", validateID, async (req: ReqWithParamID, res, next) => {
     try {
