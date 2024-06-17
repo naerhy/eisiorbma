@@ -64,6 +64,10 @@ async function createMealsRouter(env: Env): Promise<Router> {
       fileInfo = await createLocalFiles(body.meal.photoBase64);
       const meal = new MealEntity();
       meal.name = body.meal.name;
+      meal.types = [...body.meal.types];
+      meal.difficulty = body.meal.difficulty;
+      meal.cookingTime = body.meal.cookingTime;
+      meal.isVegetarian = body.meal.isVegetarian;
       meal.recipe = body.recipe ? JSON.stringify(body.recipe) : body.recipe;
       meal.filename = fileInfo.filename;
       meal.photoURL = join(urls.vps, "photos", fileInfo.filename);
@@ -82,6 +86,10 @@ async function createMealsRouter(env: Env): Promise<Router> {
       const meal = await findMeal(Number(req.params.id));
       const body = updateMealBodySchema.parse(req.body);
       meal.name = body.meal.name;
+      meal.types = [...body.meal.types];
+      meal.difficulty = body.meal.difficulty;
+      meal.cookingTime = body.meal.cookingTime;
+      meal.isVegetarian = body.meal.isVegetarian;
       meal.recipe = body.recipe ? JSON.stringify(body.recipe) : body.recipe;
       res.json(await repository.save(meal));
     } catch (err) {

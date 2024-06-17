@@ -8,6 +8,18 @@ export class MealEntity {
   @Column({ type: "varchar", length: 64 })
   name: string;
 
+  @Column({ type: "int", array: true })
+  types: number[];
+
+  @Column()
+  difficulty: number;
+
+  @Column()
+  cookingTime: number;
+
+  @Column()
+  isVegetarian: boolean;
+
   @Column({ type: "text", nullable: true })
   recipe: string | null;
 
