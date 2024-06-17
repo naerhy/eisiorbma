@@ -1,5 +1,4 @@
-import { Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn } from "typeorm";
-import { RecipeEntity } from "./recipe";
+import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity()
 export class MealEntity {
@@ -9,9 +8,8 @@ export class MealEntity {
   @Column({ type: "varchar", length: 64 })
   name: string;
 
-  @OneToOne(() => RecipeEntity, { nullable: true })
-  @JoinColumn()
-  recipe: RecipeEntity | null;
+  @Column({ type: "text", nullable: true })
+  recipe: string | null;
 
   @Column({ type: "varchar", length: 256 })
   filename: string;
