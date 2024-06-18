@@ -1,5 +1,5 @@
 import express from "express";
-import jwt from "jsonwebtoken"
+import jwt from "jsonwebtoken";
 import { authBodySchema } from "../validation";
 
 import type { Router } from "express";

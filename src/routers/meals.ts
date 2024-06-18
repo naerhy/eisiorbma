@@ -147,10 +147,7 @@ async function createMealsRouter(env: Env): Promise<Router> {
     await Promise.all([
       sharpInstance.clone().jpeg().toFile(paths.photo),
       // TODO: resize only if photo is greater than limits
-      sharpInstance
-        .clone()
-        .resize(500, 500, { fit: sharp.fit.outside })
-        .toFile(paths.thumbnail)
+      sharpInstance.clone().resize(500, 500, { fit: sharp.fit.outside }).toFile(paths.thumbnail)
     ]);
     return { filename, paths };
   }

@@ -14,7 +14,7 @@ export function validateID(req: ReqWithParamID, _: Response, next: NextFunction)
 }
 
 export function authMiddleware(secret: string) {
-  return function(req: Request, _: Response, next: NextFunction): void {
+  return function (req: Request, _: Response, next: NextFunction): void {
     const token = req.headers["authorization"]?.split(" ")[1];
     if (!token) {
       next(new Error("JWT is not defined"));

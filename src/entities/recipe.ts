@@ -6,7 +6,7 @@ export class RecipeEntity {
   id: number;
 
   @Column({ type: "int", array: true })
-  types: number[]
+  types: number[];
 
   @Column()
   difficulty: number;

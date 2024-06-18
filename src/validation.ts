@@ -15,7 +15,10 @@ export const authBodySchema = z.object({ password: z.string() });
 
 const mealSchema = z.object({
   name: z.string().min(1).max(64),
-  types: z.array(z.number().int().nonnegative().lt(4)).nonempty().transform((arr) => new Set(arr)),
+  types: z
+    .array(z.number().int().nonnegative().lt(4))
+    .nonempty()
+    .transform((arr) => new Set(arr)),
   difficulty: z.number().int().nonnegative().lt(3),
   cookingTime: z.number().int().nonnegative().lt(4),
   isVegetarian: z.boolean(),
