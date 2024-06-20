@@ -27,7 +27,7 @@ async function createMealsRouter(env: Env): Promise<Router> {
   };
   const dataSource = new DataSource({
     type: "postgres",
-    host: "localhost",
+    host: env.NODE_ENV === "development" ? "localhost" : "db",
     port: 5432,
     username: env.POSTGRES_USER,
     password: env.POSTGRES_PASSWORD,

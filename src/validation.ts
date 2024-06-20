@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const envSchema = z.object({
+  NODE_ENV: z.union([z.literal("development"), z.literal("production")]),
   PORT: z.coerce.number().int(),
   POSTGRES_USER: z.string().min(4),
   POSTGRES_PASSWORD: z.string().min(4),
