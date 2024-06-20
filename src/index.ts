@@ -6,6 +6,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import createAuthRouter from "./routers/auth";
 import { envSchema } from "./validation";
+import { errorMiddleware } from "./middlewares";
 
 function createStaticDir(dir: string): void {
   if (!existsSync(dir)) {
@@ -27,6 +28,7 @@ async function start(): Promise<void> {
   app.use(cors()); // TODO: check if needed (in production too) [?]
   app.use("/auth", createAuthRouter(env.JWT_SECRET, env.ADMIN_PW));
   app.use("/meals", await createMealsRouter(env));
+  app.use(errorMiddleware);
   app.listen(env.PORT, () => {
     console.log(`Express application is running on http://localhost:${env.PORT}`);
   });

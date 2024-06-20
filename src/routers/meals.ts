@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { addMealBodySchema, updateMealBodySchema, updatePhotoSchema } from "../validation";
 
 import type { Router } from "express";
-import type { ReqWithParamID } from "../types";
+import { HTTPError, type ReqWithParamID } from "../shared";
 import type { Env } from "../validation";
 
 interface FileInfo {
@@ -128,7 +128,7 @@ async function createMealsRouter(env: Env): Promise<Router> {
   async function findMeal(id: number): Promise<MealEntity> {
     const meal = await repository.findOneBy({ id });
     if (!meal) {
-      throw new Error("Meal does not exist");
+      throw new HTTPError(404, "Le repas demandé n'existe pas");
     }
     return meal;
   }

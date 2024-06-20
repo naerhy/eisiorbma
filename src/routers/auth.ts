@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { authBodySchema } from "../validation";
 
 import type { Router } from "express";
+import { HTTPError } from "../shared";
 
 function createAuthRouter(secret: string, password: string): Router {
   const router = express.Router();
@@ -11,7 +12,7 @@ function createAuthRouter(secret: string, password: string): Router {
     try {
       const body = authBodySchema.parse(req.body);
       if (body.password !== password) {
-        throw new Error("Password is invalid");
+        throw new HTTPError(401, "Le mot de passe est incorrect");
       }
       jwt.sign({ sub: Date.now().toString() }, secret, { expiresIn: "3h" }, (err, token) => {
         if (err) {
