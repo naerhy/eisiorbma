@@ -32,6 +32,8 @@ const recipeSchema = z.object({
   directions: z.string()
 });
 
+export type Recipe = z.infer<typeof recipeSchema>;
+
 export const addMealBodySchema = z.object({
   meal: mealSchema,
   recipe: recipeSchema.nullable()

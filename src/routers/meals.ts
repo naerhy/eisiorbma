@@ -9,7 +9,7 @@ import { addMealBodySchema, updateMealBodySchema, updatePhotoSchema } from "../v
 
 import type { Router } from "express";
 import { HTTPError, type ReqWithParamID } from "../shared";
-import type { Env } from "../validation";
+import type { Env, Recipe } from "../validation";
 
 interface FileInfo {
   filename: string;
@@ -41,7 +41,7 @@ async function createMealsRouter(env: Env): Promise<Router> {
 
   router.get("/", async (_, res, next) => {
     try {
-      res.json(await repository.find());
+      res.json((await repository.find()).map((meal) => deserializeMealRecipe(meal)));
     } catch (err) {
       next(err);
     }
@@ -49,7 +49,7 @@ async function createMealsRouter(env: Env): Promise<Router> {
 
   router.get("/:id", validateID, async (req: ReqWithParamID, res, next) => {
     try {
-      res.json(await findMeal(Number(req.params.id)));
+      res.json(deserializeMealRecipe(await findMeal(Number(req.params.id))));
     } catch (err) {
       next(err);
     }
@@ -72,7 +72,7 @@ async function createMealsRouter(env: Env): Promise<Router> {
       meal.filename = fileInfo.filename;
       meal.photoURL = join(urls.vps, "photos", fileInfo.filename);
       meal.thumbnailURL = join(urls.vps, "thumbnails", fileInfo.filename);
-      res.json(await repository.save(meal));
+      res.json(deserializeMealRecipe(await repository.save(meal)));
     } catch (err) {
       if (fileInfo) {
         deleteLocalFiles([fileInfo.paths.photo, fileInfo.paths.thumbnail]);
@@ -91,7 +91,7 @@ async function createMealsRouter(env: Env): Promise<Router> {
       meal.cookingTime = body.meal.cookingTime;
       meal.isVegetarian = body.meal.isVegetarian;
       meal.recipe = body.recipe ? JSON.stringify(body.recipe) : body.recipe;
-      res.json(await repository.save(meal));
+      res.json(deserializeMealRecipe(await repository.save(meal)));
     } catch (err) {
       next(err);
     }
@@ -106,7 +106,7 @@ async function createMealsRouter(env: Env): Promise<Router> {
       meal.filename = fileInfo.filename;
       meal.photoURL = join(urls.vps, "photos", fileInfo.filename);
       meal.thumbnailURL = join(urls.vps, "thumbnails", fileInfo.filename);
-      res.json(await repository.save(meal));
+      res.json(deserializeMealRecipe(await repository.save(meal)));
       deleteLocalFiles(oldFilepaths);
     } catch (err) {
       next(err);
@@ -118,12 +118,22 @@ async function createMealsRouter(env: Env): Promise<Router> {
       const meal = await findMeal(Number(req.params.id));
       const oldFilepaths = [join(urls.photos, meal.filename), join(urls.thumbnails, meal.filename)];
       await repository.remove(meal);
-      res.json(meal);
+      res.json(deserializeMealRecipe(meal));
       deleteLocalFiles(oldFilepaths);
     } catch (err) {
       next(err);
     }
   });
+
+  function deserializeMealRecipe(meal: MealEntity) {
+    if (meal.recipe) {
+      return {
+        ...meal,
+        recipe: JSON.parse(meal.recipe) as Recipe
+      };
+    }
+    return meal;
+  }
 
   async function findMeal(id: number): Promise<MealEntity> {
     const meal = await repository.findOneBy({ id });
