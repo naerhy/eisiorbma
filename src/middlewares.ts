@@ -24,7 +24,7 @@ export function authMiddleware(secret: string) {
     } else {
       jwt.verify(token, secret, (err) => {
         if (err) {
-          next(err);
+          next(new HTTPError(401, err.message));
         } else {
           next();
         }
