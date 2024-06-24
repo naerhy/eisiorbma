@@ -12,7 +12,7 @@ function createAuthRouter(secret: string, password: string): Router {
     try {
       const body = authBodySchema.parse(req.body);
       if (body.password !== password) {
-        throw new HTTPError(401, "Le mot de passe est incorrect");
+        throw new HTTPError(400, "Le mot de passe est incorrect");
       }
       jwt.sign({ sub: Date.now().toString() }, secret, { expiresIn: "3h" }, (err, token) => {
         if (err) {
