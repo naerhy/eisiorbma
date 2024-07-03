@@ -5,11 +5,11 @@ import { authMiddleware, validateID } from "../middlewares";
 import sharp from "sharp";
 import { unlink } from "fs";
 import { join } from "node:path";
-import { addMealBodySchema, updateMealBodySchema, updatePhotoSchema } from "../validation";
+import { addMealBodySchema, updateMealBodySchema, updatePhotoBodySchema } from "../validation";
 
 import type { Router } from "express";
 import { HTTPError, type ReqWithParamID } from "../shared";
-import type { Env, Recipe } from "../validation";
+import type { Env } from "../validation";
 
 interface FileInfo {
   filename: string;
@@ -61,14 +61,14 @@ async function createMealsRouter(env: Env): Promise<Router> {
     let fileInfo: FileInfo | null = null;
     try {
       const body = addMealBodySchema.parse(req.body);
-      fileInfo = await createLocalFiles(body.meal.photoBase64);
+      fileInfo = await createLocalFiles(body.photoBase64);
       const meal = new MealEntity();
-      meal.name = body.meal.name;
-      meal.types = [...body.meal.types];
-      meal.difficulty = body.meal.difficulty;
-      meal.cookingTime = body.meal.cookingTime;
-      meal.isVegetarian = body.meal.isVegetarian;
-      meal.recipe = body.recipe ? JSON.stringify(body.recipe) : body.recipe;
+      meal.name = body.name;
+      meal.types = [...body.types];
+      meal.difficulty = body.difficulty;
+      meal.cookingTime = body.cookingTime;
+      meal.vegetarian = body.vegetarian;
+      meal.recipe = body.recipe ? JSON.stringify(body.recipe) : null;
       meal.filename = fileInfo.filename;
       meal.photoURL = join(urls.vps, "photos", fileInfo.filename);
       meal.thumbnailURL = join(urls.vps, "thumbnails", fileInfo.filename);
@@ -85,12 +85,12 @@ async function createMealsRouter(env: Env): Promise<Router> {
     try {
       const meal = await findMeal(Number(req.params.id));
       const body = updateMealBodySchema.parse(req.body);
-      meal.name = body.meal.name;
-      meal.types = [...body.meal.types];
-      meal.difficulty = body.meal.difficulty;
-      meal.cookingTime = body.meal.cookingTime;
-      meal.isVegetarian = body.meal.isVegetarian;
-      meal.recipe = body.recipe ? JSON.stringify(body.recipe) : body.recipe;
+      meal.name = body.name;
+      meal.types = [...body.types];
+      meal.difficulty = body.difficulty;
+      meal.cookingTime = body.cookingTime;
+      meal.vegetarian = body.vegetarian;
+      meal.recipe = body.recipe ? JSON.stringify(body.recipe) : null;
       res.json(deserializeMealRecipe(await repository.save(meal)));
     } catch (err) {
       next(err);
@@ -100,7 +100,7 @@ async function createMealsRouter(env: Env): Promise<Router> {
   router.patch("/photo/:id", async (req: ReqWithParamID, res, next) => {
     try {
       const meal = await findMeal(Number(req.params.id));
-      const { photoBase64 } = updatePhotoSchema.parse(req.body);
+      const { photoBase64 } = updatePhotoBodySchema.parse(req.body);
       const fileInfo = await createLocalFiles(photoBase64);
       const oldFilepaths = [join(urls.photos, meal.filename), join(urls.thumbnails, meal.filename)];
       meal.filename = fileInfo.filename;
@@ -127,10 +127,7 @@ async function createMealsRouter(env: Env): Promise<Router> {
 
   function deserializeMealRecipe(meal: MealEntity) {
     if (meal.recipe) {
-      return {
-        ...meal,
-        recipe: JSON.parse(meal.recipe) as Recipe
-      };
+      return { ...meal, recipe: JSON.parse(meal.recipe) };
     }
     return meal;
   }

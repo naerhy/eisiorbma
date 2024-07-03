@@ -18,7 +18,7 @@ export class MealEntity {
   cookingTime: number;
 
   @Column()
-  isVegetarian: boolean;
+  vegetarian: boolean;
 
   @Column({ type: "text", nullable: true })
   recipe: string | null;

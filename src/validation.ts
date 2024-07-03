@@ -14,7 +14,13 @@ export type Env = z.infer<typeof envSchema>;
 
 export const authBodySchema = z.object({ password: z.string() });
 
-const mealSchema = z.object({
+const recipeSchema = z.object({
+  servings: z.number().int().nonnegative(),
+  ingredients: z.string(),
+  directions: z.string()
+});
+
+export const addMealBodySchema = z.object({
   name: z.string().min(1).max(64),
   types: z
     .array(z.number().int().nonnegative().lt(4))
@@ -22,25 +28,11 @@ const mealSchema = z.object({
     .transform((arr) => new Set(arr)),
   difficulty: z.number().int().nonnegative().lt(3),
   cookingTime: z.number().int().nonnegative().lt(4),
-  isVegetarian: z.boolean(),
+  vegetarian: z.boolean(),
+  recipe: recipeSchema.nullable(),
   photoBase64: z.string().regex(/^data:image\/jpeg;base64,.+$/)
 });
 
-const recipeSchema = z.object({
-  servings: z.number().int().nonnegative(),
-  ingredients: z.string(),
-  directions: z.string()
-});
+export const updateMealBodySchema = addMealBodySchema.omit({ photoBase64: true });
 
-export type Recipe = z.infer<typeof recipeSchema>;
-
-export const addMealBodySchema = z.object({
-  meal: mealSchema,
-  recipe: recipeSchema.nullable()
-});
-
-export const updateMealBodySchema = addMealBodySchema.extend({
-  meal: mealSchema.omit({ photoBase64: true })
-});
-
-export const updatePhotoSchema = mealSchema.pick({ photoBase64: true });
+export const updatePhotoBodySchema = addMealBodySchema.pick({ photoBase64: true });
