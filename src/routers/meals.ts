@@ -4,7 +4,6 @@ import { MealEntity } from "../entities/meal";
 import { authMiddleware, validateID } from "../middlewares";
 import sharp from "sharp";
 import { unlink } from "fs";
-import { join } from "node:path";
 import { addMealBodySchema, updateMealBodySchema, updatePhotoBodySchema } from "../validation";
 
 import type { Router } from "express";
@@ -21,9 +20,9 @@ interface FileInfo {
 
 async function createMealsRouter(env: Env): Promise<Router> {
   const urls = {
-    vps: "https://naerhy.ovh/static/ambroisie", // TODO: store in .env [?]
-    photos: join(env.DIR, "photos"),
-    thumbnails: join(env.DIR, "thumbnails")
+    vps: "static/ambroisie", // TODO: store in .env [?]
+    photos: `${env.DIR}/photos`,
+    thumbnails: `${env.DIR}/thumbnails`
   };
   const dataSource = new DataSource({
     type: "postgres",
@@ -70,8 +69,8 @@ async function createMealsRouter(env: Env): Promise<Router> {
       meal.vegetarian = body.vegetarian;
       meal.recipe = body.recipe ? JSON.stringify(body.recipe) : null;
       meal.filename = fileInfo.filename;
-      meal.photoURL = join(urls.vps, "photos", fileInfo.filename);
-      meal.thumbnailURL = join(urls.vps, "thumbnails", fileInfo.filename);
+      meal.photoURL = `${urls.vps}/photos/${fileInfo.filename}`;
+      meal.thumbnailURL = `${urls.vps}/thumbnails/${fileInfo.filename}`;
       res.json(deserializeMealRecipe(await repository.save(meal)));
     } catch (err) {
       if (fileInfo) {
@@ -102,10 +101,13 @@ async function createMealsRouter(env: Env): Promise<Router> {
       const meal = await findMeal(Number(req.params.id));
       const { photoBase64 } = updatePhotoBodySchema.parse(req.body);
       const fileInfo = await createLocalFiles(photoBase64);
-      const oldFilepaths = [join(urls.photos, meal.filename), join(urls.thumbnails, meal.filename)];
+      const oldFilepaths = [
+        `${urls.photos}/${meal.filename}`,
+        `${urls.thumbnails}/${meal.filename}`
+      ];
       meal.filename = fileInfo.filename;
-      meal.photoURL = join(urls.vps, "photos", fileInfo.filename);
-      meal.thumbnailURL = join(urls.vps, "thumbnails", fileInfo.filename);
+      meal.photoURL = `${urls.vps}/photos/${fileInfo.filename}`;
+      meal.thumbnailURL = `${urls.vps}/thumbnails/${fileInfo.filename}`;
       res.json(deserializeMealRecipe(await repository.save(meal)));
       deleteLocalFiles(oldFilepaths);
     } catch (err) {
@@ -116,7 +118,10 @@ async function createMealsRouter(env: Env): Promise<Router> {
   router.delete("/:id", validateID, async (req: ReqWithParamID, res, next) => {
     try {
       const meal = await findMeal(Number(req.params.id));
-      const oldFilepaths = [join(urls.photos, meal.filename), join(urls.thumbnails, meal.filename)];
+      const oldFilepaths = [
+        `${urls.photos}/${meal.filename}`,
+        `${urls.thumbnails}/${meal.filename}`
+      ];
       await repository.remove(meal);
       res.json(deserializeMealRecipe(meal));
       deleteLocalFiles(oldFilepaths);
@@ -145,8 +150,8 @@ async function createMealsRouter(env: Env): Promise<Router> {
     const filename = (Math.random() + 1).toString(36).substring(7) + ".jpeg";
     // TODO: check if file exists, generate again filename if so
     const paths = {
-      photo: join(urls.photos, filename),
-      thumbnail: join(urls.thumbnails, filename)
+      photo: `${urls.photos}/${filename}`,
+      thumbnail: `${urls.thumbnails}/${filename}`
     };
     const sharpInstance = sharp(
       Buffer.from(photoBase64.replace("data:image/jpeg;base64,", ""), "base64")
